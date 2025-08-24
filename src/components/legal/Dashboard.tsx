@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { NewCaseModal } from "./NewCaseModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { 
   Scale, 
   Upload, 
@@ -21,46 +21,6 @@ import {
   Users,
   BarChart3
 } from "lucide-react";
-
-// Mock data
-const mockContracts = [
-  {
-    id: 1,
-    name: "Service Agreement - ABC Corp",
-    uploadDate: "2024-01-15",
-    status: "reviewed",
-    riskLevel: "low",
-    deadline: "2024-02-15",
-    parties: ["Your Firm", "ABC Corporation"],
-    notes: "Standard service agreement with favorable terms."
-  },
-  {
-    id: 2,
-    name: "Employment Contract - John Doe",
-    uploadDate: "2024-01-10",
-    status: "pending",
-    riskLevel: "medium",
-    deadline: "2024-01-25",
-    parties: ["Your Firm", "John Doe"],
-    notes: "Non-compete clause needs review."
-  },
-  {
-    id: 3,
-    name: "Lease Agreement - Downtown Office",
-    uploadDate: "2024-01-08",
-    status: "flagged",
-    riskLevel: "high",
-    deadline: "2024-01-20",
-    parties: ["Your Firm", "Property Management LLC"],
-    notes: "Unusual termination clauses flagged by AI."
-  }
-];
-
-const mockTimeEntries = [
-  { id: 1, client: "ABC Corp", task: "Contract review", hours: 2.5, rate: 350, date: "2024-01-15" },
-  { id: 2, client: "John Doe", task: "Employment consultation", hours: 1.0, rate: 300, date: "2024-01-14" },
-  { id: 3, client: "Property Management", task: "Lease negotiation", hours: 3.0, rate: 400, date: "2024-01-13" }
-];
 
 interface Case {
   id: string;
@@ -91,21 +51,11 @@ export const Dashboard = () => {
   const [selectedContract, setSelectedContract] = useState<number | null>(null);
   const [newNote, setNewNote] = useState("");
   const [timeEntry, setTimeEntry] = useState({ client: "", task: "", hours: "", rate: "" });
+  const [timeEntryLoading, setTimeEntryLoading] = useState(false);
   const [showNewCaseModal, setShowNewCaseModal] = useState(false);
   const [cases, setCases] = useState<Case[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeEntryLoading, setTimeEntryLoading] = useState(false);
-
-  const getRiskBadgeVariant = (risk: string) => {
-    switch (risk) {
-      case "high": return "destructive";
-      case "medium": return "secondary";
-      case "low": return "default";
-      default: return "default";
-    }
-  };
-
 
   const fetchCases = async () => {
     console.log('fetchCases called, user:', user);
@@ -152,23 +102,10 @@ export const Dashboard = () => {
     }
   };
 
-  useEffect(() => {
-    fetchCases();
-    fetchTimeEntries();
-  }, [user]);
-
-  const handleCaseCreated = () => {
-    fetchCases();
-  };
-
   const handleTimeEntrySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !timeEntry.client || !timeEntry.task || !timeEntry.hours || !timeEntry.rate) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields",
-        variant: "destructive"
-      });
+      toast.error("Please fill in all fields");
       return;
     }
 
@@ -187,26 +124,24 @@ export const Dashboard = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Time entry logged successfully!"
-      });
-
-      // Reset form
+      toast.success("Time entry logged successfully!");
       setTimeEntry({ client: "", task: "", hours: "", rate: "" });
-      
-      // Refresh time entries
       fetchTimeEntries();
     } catch (error) {
       console.error('Error creating time entry:', error);
-      toast({
-        title: "Error",
-        description: "Failed to log time entry. Please try again.",
-        variant: "destructive"
-      });
+      toast.error("Failed to log time entry. Please try again.");
     } finally {
       setTimeEntryLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchCases();
+    fetchTimeEntries();
+  }, [user]);
+
+  const handleCaseCreated = () => {
+    fetchCases();
   };
 
   const getPriorityBadgeVariant = (priority: string) => {
@@ -265,10 +200,10 @@ export const Dashboard = () => {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Active Cases</p>
-                    <p className="text-2xl font-bold">{cases.filter(c => c.status === 'active').length}</p>
-                  </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Active Cases</p>
+                  <p className="text-2xl font-bold">{cases.filter(c => c.status === 'active').length}</p>
+                </div>
                 <FileText className="h-8 w-8 text-legal-purple" />
               </div>
             </CardContent>
@@ -277,10 +212,10 @@ export const Dashboard = () => {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Billable Hours</p>
-                    <p className="text-2xl font-bold">{totalBillableHours.toFixed(1)}</p>
-                  </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Billable Hours</p>
+                  <p className="text-2xl font-bold">{totalBillableHours.toFixed(1)}</p>
+                </div>
                 <Clock className="h-8 w-8 text-legal-purple" />
               </div>
             </CardContent>
@@ -484,8 +419,7 @@ export const Dashboard = () => {
           <CardContent>
             <div className="space-y-4">
               {timeEntries.length === 0 ? (
-                <div className="text-center py-8">
-                  <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <div className="text-center py-4">
                   <p className="text-muted-foreground">No time entries yet</p>
                 </div>
               ) : (
@@ -504,13 +438,19 @@ export const Dashboard = () => {
                   </div>
                 ))
               )}
-              {timeEntries.length > 0 && (
-                <div className="pt-4 border-t border-border">
-                  <Button variant="legal-outline" className="w-full">
-                    Export to CSV
-                  </Button>
+              <div className="pt-4 border-t border-border">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium">Total Hours:</span>
+                  <span className="font-bold">{totalBillableHours.toFixed(2)} hrs</span>
                 </div>
-              )}
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-sm font-medium">Total Amount:</span>
+                  <span className="font-bold text-legal-purple">${totalBillableAmount.toLocaleString()}</span>
+                </div>
+                <Button variant="legal-outline" className="w-full">
+                  Export to CSV
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
