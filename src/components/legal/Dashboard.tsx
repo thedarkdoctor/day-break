@@ -165,6 +165,21 @@ export const Dashboard = () => {
 
   const totalBillableHours = timeEntries.reduce((acc, entry) => acc + entry.hours, 0);
   const totalBillableAmount = timeEntries.reduce((acc, entry) => acc + entry.total_amount, 0);
+  
+  // Calculate upcoming deadlines (within next 30 days)
+  const getUpcomingDeadlines = () => {
+    const today = new Date();
+    const thirtyDaysFromNow = new Date();
+    thirtyDaysFromNow.setDate(today.getDate() + 30);
+    
+    return cases.filter(case_ => {
+      if (!case_.deadline) return false;
+      const deadline = new Date(case_.deadline);
+      return deadline >= today && deadline <= thirtyDaysFromNow;
+    }).length;
+  };
+  
+  const upcomingDeadlines = getUpcomingDeadlines();
 
   return (
     <div className="min-h-screen bg-background">
@@ -238,7 +253,7 @@ export const Dashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Upcoming Deadlines</p>
-                  <p className="text-2xl font-bold">3</p>
+                  <p className="text-2xl font-bold">{upcomingDeadlines}</p>
                 </div>
                 <Calendar className="h-8 w-8 text-legal-purple" />
               </div>
