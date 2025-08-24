@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ChevronRight, ChevronLeft, Scale } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 
 const LAWYER_TYPES = [
   "Corporate Law",
@@ -32,18 +34,44 @@ const REFERRAL_SOURCES = [
   "Other"
 ];
 
-export const OnboardingFlow = () => {
+interface OnboardingFlowProps {
+  onComplete?: () => void;
+}
+
+export const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
   const [currentStep, setCurrentStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
+    full_name: "",
     birthday: "",
-    referralSource: "",
-    about: "",
-    lawyerType: ""
+    how_heard_about_us: "",
+    about_yourself: "",
+    lawyer_type: ""
   });
+  const { toast } = useToast();
 
   const totalSteps = 5;
   const progress = (currentStep / totalSteps) * 100;
+
+  useEffect(() => {
+    // Check if user has already completed onboarding
+    const checkProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (profile?.full_name) {
+          // User already has profile data, skip onboarding
+          onComplete?.();
+        }
+      }
+    };
+    checkProfile();
+  }, [onComplete]);
 
   const handleNext = () => {
     if (currentStep < totalSteps) {
@@ -57,9 +85,56 @@ export const OnboardingFlow = () => {
     }
   };
 
-  const handleComplete = () => {
-    console.log("Onboarding completed:", formData);
-    // This would normally save the data and redirect to dashboard
+  const handleComplete = async () => {
+    setIsLoading(true);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Authentication Error",
+          description: "Please sign in to complete onboarding.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: formData.full_name,
+          birthday: formData.birthday || null,
+          how_heard_about_us: formData.how_heard_about_us,
+          about_yourself: formData.about_yourself,
+          lawyer_type: formData.lawyer_type
+        })
+        .eq('user_id', user.id);
+
+      if (error) {
+        toast({
+          title: "Profile Update Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Welcome to Day Break!",
+        description: "Your profile has been completed successfully.",
+      });
+      
+      onComplete?.();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const updateFormData = (field: string, value: string) => {
@@ -98,8 +173,8 @@ export const OnboardingFlow = () => {
                 <Input
                   id="name"
                   placeholder="Enter your full name"
-                  value={formData.name}
-                  onChange={(e) => updateFormData("name", e.target.value)}
+                  value={formData.full_name}
+                  onChange={(e) => updateFormData("full_name", e.target.value)}
                 />
               </div>
             </div>
@@ -131,7 +206,7 @@ export const OnboardingFlow = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="referral">Referral Source</Label>
-                <Select onValueChange={(value) => updateFormData("referralSource", value)}>
+                <Select onValueChange={(value) => updateFormData("how_heard_about_us", value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select how you found us" />
                   </SelectTrigger>
@@ -158,8 +233,8 @@ export const OnboardingFlow = () => {
                 <Textarea
                   id="about"
                   placeholder="Tell us about your practice, experience, or what you're looking to achieve with Day Break..."
-                  value={formData.about}
-                  onChange={(e) => updateFormData("about", e.target.value)}
+                  value={formData.about_yourself}
+                  onChange={(e) => updateFormData("about_yourself", e.target.value)}
                   rows={4}
                 />
               </div>
@@ -174,7 +249,7 @@ export const OnboardingFlow = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lawyerType">Practice Area</Label>
-                <Select onValueChange={(value) => updateFormData("lawyerType", value)}>
+                <Select onValueChange={(value) => updateFormData("lawyer_type", value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select your primary practice area" />
                   </SelectTrigger>
@@ -212,8 +287,9 @@ export const OnboardingFlow = () => {
               <Button
                 variant="legal"
                 onClick={handleComplete}
+                disabled={isLoading}
               >
-                Complete Setup
+                {isLoading ? "Completing Setup..." : "Complete Setup"}
               </Button>
             )}
           </div>

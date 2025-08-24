@@ -1,26 +1,77 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LoginPage } from "@/components/legal/LoginPage";
 import { OnboardingFlow } from "@/components/legal/OnboardingFlow";
 import { BillingPage } from "@/components/legal/BillingPage";
 import { Dashboard } from "@/components/legal/Dashboard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
-const Index = () => {
-  const [currentView, setCurrentView] = useState<"login" | "onboarding" | "billing" | "dashboard">("login");
+const AuthenticatedApp = () => {
+  const { user, loading, signOut } = useAuth();
+  const [currentView, setCurrentView] = useState<"onboarding" | "billing" | "dashboard">("onboarding");
+  const [needsOnboarding, setNeedsOnboarding] = useState(true);
+
+  useEffect(() => {
+    const checkProfile = async () => {
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (profile?.full_name) {
+          setNeedsOnboarding(false);
+          setCurrentView("dashboard");
+        }
+      }
+    };
+    checkProfile();
+  }, [user]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-legal-purple mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage onAuthSuccess={() => window.location.reload()} />;
+  }
+
+  if (needsOnboarding && currentView === "onboarding") {
+    return (
+      <OnboardingFlow 
+        onComplete={() => {
+          setNeedsOnboarding(false);
+          setCurrentView("dashboard");
+        }} 
+      />
+    );
+  }
+
+  const handleSignOut = async () => {
+    await signOut();
+    window.location.reload();
+  };
 
   const renderCurrentView = () => {
     switch (currentView) {
-      case "login":
-        return <LoginPage />;
       case "onboarding":
-        return <OnboardingFlow />;
+        return <OnboardingFlow onComplete={() => setCurrentView("dashboard")} />;
       case "billing":
         return <BillingPage />;
       case "dashboard":
         return <Dashboard />;
       default:
-        return <LoginPage />;
+        return <Dashboard />;
     }
   };
 
@@ -33,14 +84,6 @@ const Index = () => {
             <CardTitle className="text-sm">Demo Navigation</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button
-              variant={currentView === "login" ? "legal" : "legal-ghost"}
-              size="sm"
-              className="w-full justify-start"
-              onClick={() => setCurrentView("login")}
-            >
-              Login Page
-            </Button>
             <Button
               variant={currentView === "onboarding" ? "legal" : "legal-ghost"}
               size="sm"
@@ -65,12 +108,28 @@ const Index = () => {
             >
               Dashboard
             </Button>
+            <Button
+              variant="legal-outline"
+              size="sm"
+              className="w-full justify-start"
+              onClick={handleSignOut}
+            >
+              Sign Out
+            </Button>
           </CardContent>
         </Card>
       </div>
 
       {renderCurrentView()}
     </div>
+  );
+};
+
+const Index = () => {
+  return (
+    <AuthProvider>
+      <AuthenticatedApp />
+    </AuthProvider>
   );
 };
 
