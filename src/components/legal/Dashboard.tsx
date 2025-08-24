@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { NewCaseModal } from "./NewCaseModal";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   Scale, 
   Upload, 
@@ -58,10 +61,27 @@ const mockTimeEntries = [
   { id: 3, client: "Property Management", task: "Lease negotiation", hours: 3.0, rate: 400, date: "2024-01-13" }
 ];
 
+interface Case {
+  id: string;
+  title: string;
+  client_name: string;
+  case_type: string;
+  status: string;
+  priority: string;
+  description?: string;
+  deadline?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export const Dashboard = () => {
+  const { user } = useAuth();
   const [selectedContract, setSelectedContract] = useState<number | null>(null);
   const [newNote, setNewNote] = useState("");
   const [timeEntry, setTimeEntry] = useState({ client: "", task: "", hours: "", rate: "" });
+  const [showNewCaseModal, setShowNewCaseModal] = useState(false);
+  const [cases, setCases] = useState<Case[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const getRiskBadgeVariant = (risk: string) => {
     switch (risk) {
@@ -72,11 +92,49 @@ export const Dashboard = () => {
     }
   };
 
+
+  const fetchCases = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('cases')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setCases(data || []);
+    } catch (error) {
+      console.error('Error fetching cases:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCases();
+  }, [user]);
+
+  const handleCaseCreated = () => {
+    fetchCases();
+  };
+
+  const getPriorityBadgeVariant = (priority: string) => {
+    switch (priority) {
+      case "urgent": return "destructive";
+      case "high": return "destructive";
+      case "medium": return "secondary";
+      case "low": return "default";
+      default: return "default";
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "reviewed": return <CheckCircle className="h-4 w-4 text-success" />;
-      case "pending": return <Clock className="h-4 w-4 text-warning" />;
-      case "flagged": return <AlertTriangle className="h-4 w-4 text-destructive" />;
+      case "completed": return <CheckCircle className="h-4 w-4 text-success" />;
+      case "active": return <Clock className="h-4 w-4 text-warning" />;
+      case "on-hold": return <AlertTriangle className="h-4 w-4 text-destructive" />;
       default: return <FileText className="h-4 w-4" />;
     }
   };
@@ -101,7 +159,7 @@ export const Dashboard = () => {
               <Users className="h-4 w-4 mr-2" />
               Manage Team
             </Button>
-            <Button variant="legal" size="sm">
+            <Button variant="legal" size="sm" onClick={() => setShowNewCaseModal(true)}>
               <Plus className="h-4 w-4 mr-2" />
               New Case
             </Button>
@@ -115,10 +173,10 @@ export const Dashboard = () => {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Active Contracts</p>
-                  <p className="text-2xl font-bold">{mockContracts.length}</p>
-                </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Active Cases</p>
+                    <p className="text-2xl font-bold">{cases.filter(c => c.status === 'active').length}</p>
+                  </div>
                 <FileText className="h-8 w-8 text-legal-purple" />
               </div>
             </CardContent>
@@ -233,71 +291,70 @@ export const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Contracts Dashboard */}
+        {/* Cases Dashboard */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
               <FileText className="h-5 w-5 mr-2 text-legal-purple" />
-              Contract Dashboard
+              Cases Dashboard
             </CardTitle>
             <CardDescription>
-              All uploaded contracts with AI analysis and notes
+              All your legal cases and their current status
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {mockContracts.map((contract) => (
-                <div
-                  key={contract.id}
-                  className="border border-border rounded-lg p-4 hover:bg-muted/50 cursor-pointer transition-colors"
-                  onClick={() => setSelectedContract(selectedContract === contract.id ? null : contract.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {getStatusIcon(contract.status)}
-                      <div>
-                        <h4 className="font-medium">{contract.name}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Uploaded: {contract.uploadDate} • Deadline: {contract.deadline}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={getRiskBadgeVariant(contract.riskLevel)}>
-                        {contract.riskLevel} risk
-                      </Badge>
-                    </div>
-                  </div>
-                  
-                  {selectedContract === contract.id && (
-                    <div className="mt-4 pt-4 border-t border-border space-y-4">
-                      <div>
-                        <h5 className="font-medium mb-2">Parties</h5>
-                        <div className="flex gap-2">
-                          {contract.parties.map((party, index) => (
-                            <Badge key={index} variant="outline">{party}</Badge>
-                          ))}
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-legal-purple"></div>
+              </div>
+            ) : cases.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground mb-4">No cases yet</p>
+                <Button variant="legal" onClick={() => setShowNewCaseModal(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Your First Case
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {cases.map((case_) => (
+                  <div
+                    key={case_.id}
+                    className="border border-border rounded-lg p-4 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {getStatusIcon(case_.status)}
+                        <div>
+                          <h4 className="font-medium">{case_.title}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Client: {case_.client_name} • Type: {case_.case_type}
+                          </p>
+                          {case_.deadline && (
+                            <p className="text-xs text-muted-foreground">
+                              Deadline: {new Date(case_.deadline).toLocaleDateString()}
+                            </p>
+                          )}
                         </div>
                       </div>
-                      
-                      <div>
-                        <h5 className="font-medium mb-2">Notes</h5>
-                        <p className="text-sm text-muted-foreground mb-2">{contract.notes}</p>
-                        <Textarea
-                          placeholder="Add a note..."
-                          value={newNote}
-                          onChange={(e) => setNewNote(e.target.value)}
-                          className="mb-2"
-                        />
-                        <Button variant="legal-outline" size="sm">
-                          Add Note
-                        </Button>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={getPriorityBadgeVariant(case_.priority)}>
+                          {case_.priority} priority
+                        </Badge>
+                        <Badge variant="outline">{case_.status}</Badge>
                       </div>
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                    
+                    {case_.description && (
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <p className="text-sm text-muted-foreground">{case_.description}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -337,6 +394,12 @@ export const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      <NewCaseModal 
+        open={showNewCaseModal}
+        onOpenChange={setShowNewCaseModal}
+        onCaseCreated={handleCaseCreated}
+      />
     </div>
   );
 };
