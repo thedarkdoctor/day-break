@@ -18,6 +18,10 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        // Day Break Legal Variants
+        legal: "bg-legal-purple text-legal-white hover:bg-legal-purple-dark shadow-purple transition-all duration-300",
+        "legal-outline": "border-2 border-legal-purple text-legal-purple hover:bg-legal-purple hover:text-legal-white transition-all duration-300",
+        "legal-ghost": "text-legal-purple hover:bg-legal-purple/10 hover:text-legal-purple-light transition-all duration-300",
       },
       size: {
         default: "h-10 px-4 py-2",

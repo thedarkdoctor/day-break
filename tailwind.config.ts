@@ -52,6 +52,17 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				// Day Break Legal Brand Colors
+				'legal-purple': 'hsl(var(--legal-purple))',
+				'legal-purple-dark': 'hsl(var(--legal-purple-dark))',
+				'legal-purple-light': 'hsl(var(--legal-purple-light))',
+				'legal-black': 'hsl(var(--legal-black))',
+				'legal-gray': 'hsl(var(--legal-gray))',
+				'legal-white': 'hsl(var(--legal-white))',
+				// Status Colors
+				success: 'hsl(var(--success))',
+				warning: 'hsl(var(--warning))',
+				info: 'hsl(var(--info))',
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
