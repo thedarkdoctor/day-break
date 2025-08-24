@@ -28,8 +28,12 @@ export const NewCaseModal = ({ open, onOpenChange, onCaseCreated }: NewCaseModal
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log('New case form submitted', formData);
     e.preventDefault();
-    if (!user) return;
+    if (!user) {
+      console.log('No user found for case creation');
+      return;
+    }
 
     setLoading(true);
     

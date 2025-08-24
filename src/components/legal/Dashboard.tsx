@@ -94,17 +94,25 @@ export const Dashboard = () => {
 
 
   const fetchCases = async () => {
-    if (!user) return;
+    console.log('fetchCases called, user:', user);
+    if (!user) {
+      console.log('No user found, skipping fetch');
+      setLoading(false);
+      return;
+    }
     
     try {
+      console.log('Fetching cases for user ID:', user.id);
       const { data, error } = await supabase
         .from('cases')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
+      console.log('Supabase response:', { data, error });
       if (error) throw error;
       setCases(data || []);
+      console.log('Cases set:', data);
     } catch (error) {
       console.error('Error fetching cases:', error);
     } finally {
@@ -159,7 +167,10 @@ export const Dashboard = () => {
               <Users className="h-4 w-4 mr-2" />
               Manage Team
             </Button>
-            <Button variant="legal" size="sm" onClick={() => setShowNewCaseModal(true)}>
+            <Button variant="legal" size="sm" onClick={() => {
+              console.log('New Case button clicked');
+              setShowNewCaseModal(true);
+            }}>
               <Plus className="h-4 w-4 mr-2" />
               New Case
             </Button>
