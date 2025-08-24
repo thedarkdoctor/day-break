@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { NewCaseModal } from "./NewCaseModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
 import { 
   Scale, 
   Upload, 
@@ -74,6 +75,17 @@ interface Case {
   updated_at: string;
 }
 
+interface TimeEntry {
+  id: string;
+  client_name: string;
+  task_description: string;
+  hours: number;
+  hourly_rate: number;
+  total_amount: number;
+  date: string;
+  created_at: string;
+}
+
 export const Dashboard = () => {
   const { user } = useAuth();
   const [selectedContract, setSelectedContract] = useState<number | null>(null);
@@ -81,7 +93,9 @@ export const Dashboard = () => {
   const [timeEntry, setTimeEntry] = useState({ client: "", task: "", hours: "", rate: "" });
   const [showNewCaseModal, setShowNewCaseModal] = useState(false);
   const [cases, setCases] = useState<Case[]>([]);
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [timeEntryLoading, setTimeEntryLoading] = useState(false);
 
   const getRiskBadgeVariant = (risk: string) => {
     switch (risk) {
@@ -120,12 +134,79 @@ export const Dashboard = () => {
     }
   };
 
+  const fetchTimeEntries = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('time_entries')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setTimeEntries(data || []);
+    } catch (error) {
+      console.error('Error fetching time entries:', error);
+    }
+  };
+
   useEffect(() => {
     fetchCases();
+    fetchTimeEntries();
   }, [user]);
 
   const handleCaseCreated = () => {
     fetchCases();
+  };
+
+  const handleTimeEntrySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !timeEntry.client || !timeEntry.task || !timeEntry.hours || !timeEntry.rate) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setTimeEntryLoading(true);
+    
+    try {
+      const { error } = await supabase
+        .from('time_entries')
+        .insert({
+          user_id: user.id,
+          client_name: timeEntry.client,
+          task_description: timeEntry.task,
+          hours: parseFloat(timeEntry.hours),
+          hourly_rate: parseFloat(timeEntry.rate)
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Time entry logged successfully!"
+      });
+
+      // Reset form
+      setTimeEntry({ client: "", task: "", hours: "", rate: "" });
+      
+      // Refresh time entries
+      fetchTimeEntries();
+    } catch (error) {
+      console.error('Error creating time entry:', error);
+      toast({
+        title: "Error",
+        description: "Failed to log time entry. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setTimeEntryLoading(false);
+    }
   };
 
   const getPriorityBadgeVariant = (priority: string) => {
@@ -147,8 +228,8 @@ export const Dashboard = () => {
     }
   };
 
-  const totalBillableHours = mockTimeEntries.reduce((acc, entry) => acc + entry.hours, 0);
-  const totalBillableAmount = mockTimeEntries.reduce((acc, entry) => acc + (entry.hours * entry.rate), 0);
+  const totalBillableHours = timeEntries.reduce((acc, entry) => acc + entry.hours, 0);
+  const totalBillableAmount = timeEntries.reduce((acc, entry) => acc + entry.total_amount, 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -196,10 +277,10 @@ export const Dashboard = () => {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Billable Hours</p>
-                  <p className="text-2xl font-bold">{totalBillableHours}</p>
-                </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Billable Hours</p>
+                    <p className="text-2xl font-bold">{totalBillableHours.toFixed(1)}</p>
+                  </div>
                 <Clock className="h-8 w-8 text-legal-purple" />
               </div>
             </CardContent>
@@ -266,38 +347,58 @@ export const Dashboard = () => {
                 Log billable hours for your cases
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Client</label>
-                  <Input
-                    placeholder="Client name"
-                    value={timeEntry.client}
-                    onChange={(e) => setTimeEntry({...timeEntry, client: e.target.value})}
-                  />
+            <CardContent>
+              <form onSubmit={handleTimeEntrySubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Client</label>
+                    <Input
+                      placeholder="Client name"
+                      value={timeEntry.client}
+                      onChange={(e) => setTimeEntry({...timeEntry, client: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Hours</label>
+                    <Input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      placeholder="2.5"
+                      value={timeEntry.hours}
+                      onChange={(e) => setTimeEntry({...timeEntry, hours: e.target.value})}
+                      required
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Hours</label>
-                  <Input
-                    type="number"
-                    step="0.25"
-                    placeholder="2.5"
-                    value={timeEntry.hours}
-                    onChange={(e) => setTimeEntry({...timeEntry, hours: e.target.value})}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium">Task Description</label>
+                    <Input
+                      placeholder="Brief description of work performed"
+                      value={timeEntry.task}
+                      onChange={(e) => setTimeEntry({...timeEntry, task: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Hourly Rate ($)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="350.00"
+                      value={timeEntry.rate}
+                      onChange={(e) => setTimeEntry({...timeEntry, rate: e.target.value})}
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Task Description</label>
-                <Input
-                  placeholder="Brief description of work performed"
-                  value={timeEntry.task}
-                  onChange={(e) => setTimeEntry({...timeEntry, task: e.target.value})}
-                />
-              </div>
-              <Button variant="legal" className="w-full">
-                Log Time Entry
-              </Button>
+                <Button type="submit" variant="legal" className="w-full" disabled={timeEntryLoading}>
+                  {timeEntryLoading ? "Logging..." : "Log Time Entry"}
+                </Button>
+              </form>
             </CardContent>
           </Card>
         </div>
@@ -382,25 +483,34 @@ export const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {mockTimeEntries.map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                  <div>
-                    <h4 className="font-medium">{entry.client}</h4>
-                    <p className="text-sm text-muted-foreground">{entry.task}</p>
-                    <p className="text-xs text-muted-foreground">{entry.date}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">{entry.hours} hrs</p>
-                    <p className="text-sm text-muted-foreground">${entry.rate}/hr</p>
-                    <p className="font-bold text-legal-purple">${(entry.hours * entry.rate).toLocaleString()}</p>
-                  </div>
+              {timeEntries.length === 0 ? (
+                <div className="text-center py-8">
+                  <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No time entries yet</p>
                 </div>
-              ))}
-              <div className="pt-4 border-t border-border">
-                <Button variant="legal-outline" className="w-full">
-                  Export to CSV
-                </Button>
-              </div>
+              ) : (
+                timeEntries.map((entry) => (
+                  <div key={entry.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
+                    <div>
+                      <h4 className="font-medium">{entry.client_name}</h4>
+                      <p className="text-sm text-muted-foreground">{entry.task_description}</p>
+                      <p className="text-xs text-muted-foreground">{new Date(entry.date).toLocaleDateString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">{entry.hours} hrs</p>
+                      <p className="text-sm text-muted-foreground">${entry.hourly_rate}/hr</p>
+                      <p className="font-bold text-legal-purple">${entry.total_amount.toLocaleString()}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+              {timeEntries.length > 0 && (
+                <div className="pt-4 border-t border-border">
+                  <Button variant="legal-outline" className="w-full">
+                    Export to CSV
+                  </Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

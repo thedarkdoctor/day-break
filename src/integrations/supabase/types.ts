@@ -92,6 +92,45 @@ export type Database = {
         }
         Relationships: []
       }
+      time_entries: {
+        Row: {
+          client_name: string
+          created_at: string
+          date: string
+          hourly_rate: number
+          hours: number
+          id: string
+          task_description: string
+          total_amount: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_name: string
+          created_at?: string
+          date?: string
+          hourly_rate: number
+          hours: number
+          id?: string
+          task_description: string
+          total_amount?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_name?: string
+          created_at?: string
+          date?: string
+          hourly_rate?: number
+          hours?: number
+          id?: string
+          task_description?: string
+          total_amount?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
