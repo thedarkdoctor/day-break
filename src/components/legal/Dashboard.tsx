@@ -23,7 +23,12 @@ import {
   Edit,
   Save,
   X,
-  Trash2
+  Trash2,
+  User,
+  Settings,
+  LogOut,
+  Crown,
+  UserPlus
 } from "lucide-react";
 
 interface Case {
@@ -272,11 +277,79 @@ export const Dashboard = () => {
   const [showNewCaseModal, setShowNewCaseModal] = useState(false);
   const [showEditCasesModal, setShowEditCasesModal] = useState(false);
   const [showEditTimeEntriesModal, setShowEditTimeEntriesModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [cases, setCases] = useState<Case[]>([]);
   const [editingCases, setEditingCases] = useState<Case[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [editingTimeEntries, setEditingTimeEntries] = useState<TimeEntry[]>([]);
+  const [profile, setProfile] = useState<any>(null);
+  const [teams, setTeams] = useState<any[]>([]);
+  const [ownedTeams, setOwnedTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Fetch user profile and teams
+  const fetchProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileError) throw profileError;
+      setProfile(profileData);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
+
+  const fetchTeams = async () => {
+    if (!user) return;
+    
+    try {
+      // Fetch teams user is member of
+      const { data: memberTeams, error: memberError } = await supabase
+        .from('team_members')
+        .select(`
+          team_id,
+          role,
+          teams:team_id (
+            id,
+            name,
+            description,
+            owner_id
+          )
+        `)
+        .eq('user_id', user.id);
+
+      if (memberError) throw memberError;
+      
+      // Fetch teams user owns
+      const { data: ownerTeams, error: ownerError } = await supabase
+        .from('teams')
+        .select('*')
+        .eq('owner_id', user.id);
+
+      if (ownerError) throw ownerError;
+
+      setTeams(memberTeams?.map(mt => ({ ...mt.teams, role: mt.role })) || []);
+      setOwnedTeams(ownerTeams || []);
+    } catch (error) {
+      console.error('Error fetching teams:', error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast.success("Logged out successfully");
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast.error("Failed to log out");
+    }
+  };
 
   const fetchCases = async () => {
     console.log('fetchCases called, user:', user);
@@ -415,6 +488,8 @@ export const Dashboard = () => {
   useEffect(() => {
     fetchCases();
     fetchTimeEntries();
+    fetchProfile();
+    fetchTeams();
   }, [user]);
 
   const handleCaseCreated = () => {
@@ -529,9 +604,13 @@ export const Dashboard = () => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="legal-outline" size="sm">
-              <Users className="h-4 w-4 mr-2" />
-              Manage Team
+            <Button 
+              variant="legal-outline" 
+              onClick={() => setShowProfileModal(true)}
+              className="flex items-center gap-2"
+            >
+              <User className="h-4 w-4" />
+              Profile
             </Button>
             <Button variant="legal" size="sm" onClick={() => {
               console.log('New Case button clicked');
@@ -944,6 +1023,171 @@ export const Dashboard = () => {
               >
                 <Save className="h-4 w-4 mr-2" />
                 Save Changes
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Modal */}
+      {showProfileModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background border border-border rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <h2 className="text-xl font-semibold">Profile & Settings</h2>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => setShowProfileModal(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <div className="p-6 max-h-[calc(90vh-140px)] overflow-y-auto">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                {/* Profile Information */}
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 flex items-center">
+                      <User className="h-5 w-5 mr-2 text-legal-purple" />
+                      Profile Information
+                    </h3>
+                    <div className="space-y-4 bg-muted/50 p-4 rounded-lg">
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Email</label>
+                        <p className="text-sm">{user?.email || 'Not available'}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Full Name</label>
+                        <p className="text-sm">{profile?.full_name || 'Not set'}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Lawyer Type</label>
+                        <p className="text-sm">{profile?.lawyer_type || 'Not set'}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">About</label>
+                        <p className="text-sm">{profile?.about_yourself || 'Not set'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Settings */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 flex items-center">
+                      <Settings className="h-5 w-5 mr-2 text-legal-purple" />
+                      Settings
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div>
+                          <p className="text-sm font-medium">Email Notifications</p>
+                          <p className="text-xs text-muted-foreground">Receive notifications for deadlines and updates</p>
+                        </div>
+                        <input type="checkbox" defaultChecked className="h-4 w-4" />
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div>
+                          <p className="text-sm font-medium">Dark Mode</p>
+                          <p className="text-xs text-muted-foreground">Switch between light and dark themes</p>
+                        </div>
+                        <input type="checkbox" className="h-4 w-4" />
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                        <div>
+                          <p className="text-sm font-medium">Auto-save Time Entries</p>
+                          <p className="text-xs text-muted-foreground">Automatically save time entries as you type</p>
+                        </div>
+                        <input type="checkbox" defaultChecked className="h-4 w-4" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Teams Information */}
+                <div className="space-y-6">
+                  
+                  {/* Teams I'm Running */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 flex items-center">
+                      <Crown className="h-5 w-5 mr-2 text-legal-purple" />
+                      Teams I'm Running ({ownedTeams.length})
+                    </h3>
+                    <div className="space-y-3">
+                      {ownedTeams.length === 0 ? (
+                        <div className="text-center py-6 bg-muted/50 rounded-lg">
+                          <Crown className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground">You're not running any teams yet</p>
+                          <Button variant="legal" size="sm" className="mt-3">
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create Team
+                          </Button>
+                        </div>
+                      ) : (
+                        ownedTeams.map((team) => (
+                          <div key={team.id} className="p-3 bg-muted/50 rounded-lg">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h4 className="font-medium">{team.name}</h4>
+                                <p className="text-xs text-muted-foreground">{team.description}</p>
+                              </div>
+                              <Badge variant="outline">Owner</Badge>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Teams I'm Part Of */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 flex items-center">
+                      <Users className="h-5 w-5 mr-2 text-legal-purple" />
+                      Teams I'm Part Of ({teams.length})
+                    </h3>
+                    <div className="space-y-3">
+                      {teams.length === 0 ? (
+                        <div className="text-center py-6 bg-muted/50 rounded-lg">
+                          <Users className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                          <p className="text-sm text-muted-foreground">You're not part of any teams yet</p>
+                          <Button variant="legal-outline" size="sm" className="mt-3">
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Join Team
+                          </Button>
+                        </div>
+                      ) : (
+                        teams.map((team) => (
+                          <div key={team.id} className="p-3 bg-muted/50 rounded-lg">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h4 className="font-medium">{team.name}</h4>
+                                <p className="text-xs text-muted-foreground">{team.description}</p>
+                              </div>
+                              <Badge variant="outline" className="capitalize">{team.role}</Badge>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer with Logout */}
+            <div className="flex items-center justify-between p-6 border-t border-border bg-muted/20">
+              <div className="text-sm text-muted-foreground">
+                Member since {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Unknown'}
+              </div>
+              <Button 
+                variant="destructive"
+                onClick={handleLogout}
+                className="flex items-center gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                Log Out
               </Button>
             </div>
           </div>
