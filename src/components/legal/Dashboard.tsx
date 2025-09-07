@@ -161,6 +161,108 @@ const EditCaseForm = ({ case: caseData, onUpdate, onDelete }: EditCaseFormProps)
   );
 };
 
+// EditTimeEntryForm component
+interface EditTimeEntryFormProps {
+  timeEntry: TimeEntry;
+  onUpdate: (updatedEntry: TimeEntry) => void;
+  onDelete: () => void;
+}
+
+const EditTimeEntryForm = ({ timeEntry, onUpdate, onDelete }: EditTimeEntryFormProps) => {
+  const [formData, setFormData] = useState<TimeEntry>(timeEntry);
+
+  const handleChange = (field: keyof TimeEntry, value: string | number) => {
+    const updatedEntry = { ...formData, [field]: value };
+    
+    // Recalculate total_amount when hours or hourly_rate changes
+    if (field === 'hours' || field === 'hourly_rate') {
+      const hours = field === 'hours' ? Number(value) : formData.hours;
+      const rate = field === 'hourly_rate' ? Number(value) : formData.hourly_rate;
+      updatedEntry.total_amount = hours * rate;
+    }
+    
+    setFormData(updatedEntry);
+    onUpdate(updatedEntry);
+  };
+
+  return (
+    <div className="border border-border rounded-lg p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-medium text-lg">Time Entry Details</h3>
+        <Button 
+          variant="destructive" 
+          size="sm"
+          onClick={onDelete}
+        >
+          <Trash2 className="h-4 w-4 mr-2" />
+          Delete Entry
+        </Button>
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium">Client Name</label>
+          <Input
+            value={formData.client_name}
+            onChange={(e) => handleChange('client_name', e.target.value)}
+            placeholder="Enter client name"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Date</label>
+          <Input
+            type="date"
+            value={formData.date}
+            onChange={(e) => handleChange('date', e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium">Hours</label>
+          <Input
+            type="number"
+            step="0.25"
+            min="0"
+            value={formData.hours}
+            onChange={(e) => handleChange('hours', Number(e.target.value))}
+            placeholder="2.5"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Hourly Rate ($)</label>
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            value={formData.hourly_rate}
+            onChange={(e) => handleChange('hourly_rate', Number(e.target.value))}
+            placeholder="350.00"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium">Task Description</label>
+        <Textarea
+          value={formData.task_description}
+          onChange={(e) => handleChange('task_description', e.target.value)}
+          placeholder="Brief description of work performed"
+          rows={2}
+        />
+      </div>
+
+      <div className="bg-muted/50 p-3 rounded-lg">
+        <div className="flex justify-between items-center">
+          <span className="text-sm font-medium">Total Amount:</span>
+          <span className="font-bold text-legal-purple">${formData.total_amount.toFixed(2)}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const Dashboard = () => {
   const { user } = useAuth();
   const [selectedContract, setSelectedContract] = useState<number | null>(null);
@@ -169,9 +271,11 @@ export const Dashboard = () => {
   const [timeEntryLoading, setTimeEntryLoading] = useState(false);
   const [showNewCaseModal, setShowNewCaseModal] = useState(false);
   const [showEditCasesModal, setShowEditCasesModal] = useState(false);
+  const [showEditTimeEntriesModal, setShowEditTimeEntriesModal] = useState(false);
   const [cases, setCases] = useState<Case[]>([]);
   const [editingCases, setEditingCases] = useState<Case[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [editingTimeEntries, setEditingTimeEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchCases = async () => {
@@ -216,6 +320,62 @@ export const Dashboard = () => {
       setTimeEntries(data || []);
     } catch (error) {
       console.error('Error fetching time entries:', error);
+    }
+  };
+
+  // Handle editing time entries
+  const handleEditTimeEntries = () => {
+    setEditingTimeEntries([...timeEntries]);
+    setShowEditTimeEntriesModal(true);
+  };
+
+  const handleSaveTimeEntries = async () => {
+    try {
+      // Find time entries to update
+      const entriesToUpdate = editingTimeEntries.filter(editingEntry => {
+        const originalEntry = timeEntries.find(e => e.id === editingEntry.id);
+        return originalEntry && JSON.stringify(originalEntry) !== JSON.stringify(editingEntry);
+      });
+
+      // Find time entries to delete
+      const entriesToDelete = timeEntries.filter(originalEntry => 
+        !editingTimeEntries.find(editingEntry => editingEntry.id === originalEntry.id)
+      );
+
+      // Update time entries
+      for (const entry of entriesToUpdate) {
+        const { error } = await supabase
+          .from('time_entries')
+          .update({
+            client_name: entry.client_name,
+            task_description: entry.task_description,
+            hours: entry.hours,
+            hourly_rate: entry.hourly_rate,
+            date: entry.date
+          })
+          .eq('id', entry.id);
+
+        if (error) throw error;
+      }
+
+      // Delete time entries
+      for (const entry of entriesToDelete) {
+        const { error } = await supabase
+          .from('time_entries')
+          .delete()
+          .eq('id', entry.id);
+
+        if (error) throw error;
+      }
+
+      // Refresh time entries
+      await fetchTimeEntries();
+      setShowEditTimeEntriesModal(false);
+      setEditingTimeEntries([]);
+      toast.success("Time entries updated successfully");
+    } catch (error) {
+      console.error('Error updating time entries:', error);
+      toast.error("Failed to update time entries");
     }
   };
 
@@ -613,8 +773,19 @@ export const Dashboard = () => {
               <BarChart3 className="h-5 w-5 mr-2 text-legal-purple" />
               Billing Tracker
             </CardTitle>
-            <CardDescription>
-              Recent time entries and billing overview
+            <CardDescription className="flex items-center justify-between">
+              <span>Recent time entries and billing overview</span>
+              {timeEntries.length > 0 && (
+                <Button 
+                  variant="legal-outline" 
+                  size="sm" 
+                  onClick={handleEditTimeEntries}
+                  className="ml-4"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Entries
+                </Button>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -712,6 +883,64 @@ export const Dashboard = () => {
               <Button 
                 variant="legal"
                 onClick={handleSaveCases}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Time Entries Modal */}
+      {showEditTimeEntriesModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background border border-border rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <h2 className="text-xl font-semibold">Edit Time Entries</h2>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => {
+                  setEditingTimeEntries([]);
+                  setShowEditTimeEntriesModal(false);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-6 max-h-[calc(90vh-140px)] overflow-y-auto">
+              <div className="space-y-6">
+                {editingTimeEntries.map((entry, index) => (
+                  <EditTimeEntryForm 
+                    key={entry.id}
+                    timeEntry={entry}
+                    onUpdate={(updatedEntry) => {
+                      const newEntries = [...editingTimeEntries];
+                      newEntries[index] = updatedEntry;
+                      setEditingTimeEntries(newEntries);
+                    }}
+                    onDelete={() => {
+                      const newEntries = editingTimeEntries.filter((_, i) => i !== index);
+                      setEditingTimeEntries(newEntries);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-border">
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  setEditingTimeEntries([]);
+                  setShowEditTimeEntriesModal(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="legal"
+                onClick={handleSaveTimeEntries}
               >
                 <Save className="h-4 w-4 mr-2" />
                 Save Changes
