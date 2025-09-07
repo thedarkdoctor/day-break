@@ -19,7 +19,11 @@ import {
   DollarSign,
   Calendar,
   Users,
-  BarChart3
+  BarChart3,
+  Edit,
+  Save,
+  X,
+  Trash2
 } from "lucide-react";
 
 interface Case {
@@ -46,6 +50,117 @@ interface TimeEntry {
   created_at: string;
 }
 
+// EditCaseForm component
+interface EditCaseFormProps {
+  case: Case;
+  onUpdate: (updatedCase: Case) => void;
+  onDelete: () => void;
+}
+
+const EditCaseForm = ({ case: caseData, onUpdate, onDelete }: EditCaseFormProps) => {
+  const [formData, setFormData] = useState<Case>(caseData);
+
+  const handleChange = (field: keyof Case, value: string) => {
+    const updatedCase = { ...formData, [field]: value };
+    setFormData(updatedCase);
+    onUpdate(updatedCase);
+  };
+
+  return (
+    <div className="border border-border rounded-lg p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-medium text-lg">Case Details</h3>
+        <Button 
+          variant="destructive" 
+          size="sm"
+          onClick={onDelete}
+        >
+          <Trash2 className="h-4 w-4 mr-2" />
+          Delete Case
+        </Button>
+      </div>
+      
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium">Case Title</label>
+          <Input
+            value={formData.title}
+            onChange={(e) => handleChange('title', e.target.value)}
+            placeholder="Enter case title"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Client Name</label>
+          <Input
+            value={formData.client_name}
+            onChange={(e) => handleChange('client_name', e.target.value)}
+            placeholder="Enter client name"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="text-sm font-medium">Case Type</label>
+          <Input
+            value={formData.case_type}
+            onChange={(e) => handleChange('case_type', e.target.value)}
+            placeholder="e.g. Civil Litigation"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Status</label>
+          <select 
+            value={formData.status}
+            onChange={(e) => handleChange('status', e.target.value)}
+            className="w-full px-3 py-2 border border-border rounded-md"
+          >
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="completed">Completed</option>
+            <option value="on_hold">On Hold</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-sm font-medium">Priority</label>
+          <select 
+            value={formData.priority}
+            onChange={(e) => handleChange('priority', e.target.value)}
+            className="w-full px-3 py-2 border border-border rounded-md"
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium">Deadline</label>
+          <Input
+            type="date"
+            value={formData.deadline || ''}
+            onChange={(e) => handleChange('deadline', e.target.value)}
+          />
+        </div>
+        <div></div>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium">Description</label>
+        <Textarea
+          value={formData.description || ''}
+          onChange={(e) => handleChange('description', e.target.value)}
+          placeholder="Case description or notes"
+          rows={3}
+        />
+      </div>
+    </div>
+  );
+};
+
 export const Dashboard = () => {
   const { user } = useAuth();
   const [selectedContract, setSelectedContract] = useState<number | null>(null);
@@ -53,7 +168,9 @@ export const Dashboard = () => {
   const [timeEntry, setTimeEntry] = useState({ client: "", task: "", hours: "", rate: "" });
   const [timeEntryLoading, setTimeEntryLoading] = useState(false);
   const [showNewCaseModal, setShowNewCaseModal] = useState(false);
+  const [showEditCasesModal, setShowEditCasesModal] = useState(false);
   const [cases, setCases] = useState<Case[]>([]);
+  const [editingCases, setEditingCases] = useState<Case[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -180,6 +297,64 @@ export const Dashboard = () => {
   };
   
   const upcomingDeadlines = getUpcomingDeadlines();
+
+  // Handle editing cases
+  const handleEditCases = () => {
+    setEditingCases([...cases]);
+    setShowEditCasesModal(true);
+  };
+
+  const handleSaveCases = async () => {
+    try {
+      // Find cases to update
+      const casesToUpdate = editingCases.filter(editingCase => {
+        const originalCase = cases.find(c => c.id === editingCase.id);
+        return originalCase && JSON.stringify(originalCase) !== JSON.stringify(editingCase);
+      });
+
+      // Find cases to delete (cases that were in original but not in editing)
+      const casesToDelete = cases.filter(originalCase => 
+        !editingCases.find(editingCase => editingCase.id === originalCase.id)
+      );
+
+      // Update cases
+      for (const case_ of casesToUpdate) {
+        const { error } = await supabase
+          .from('cases')
+          .update({
+            title: case_.title,
+            client_name: case_.client_name,
+            case_type: case_.case_type,
+            status: case_.status,
+            priority: case_.priority,
+            description: case_.description,
+            deadline: case_.deadline
+          })
+          .eq('id', case_.id);
+
+        if (error) throw error;
+      }
+
+      // Delete cases
+      for (const case_ of casesToDelete) {
+        const { error } = await supabase
+          .from('cases')
+          .delete()
+          .eq('id', case_.id);
+
+        if (error) throw error;
+      }
+
+      // Refresh cases
+      await fetchCases();
+      setShowEditCasesModal(false);
+      setEditingCases([]);
+      toast.success("Cases updated successfully");
+    } catch (error) {
+      console.error('Error updating cases:', error);
+      toast.error("Failed to update cases");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -360,8 +535,19 @@ export const Dashboard = () => {
               <FileText className="h-5 w-5 mr-2 text-legal-purple" />
               Cases Dashboard
             </CardTitle>
-            <CardDescription>
-              All your legal cases and their current status
+            <CardDescription className="flex items-center justify-between">
+              <span>All your legal cases and their current status</span>
+              {cases.length > 0 && (
+                <Button 
+                  variant="legal-outline" 
+                  size="sm" 
+                  onClick={handleEditCases}
+                  className="ml-4"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit Cases
+                </Button>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -476,6 +662,64 @@ export const Dashboard = () => {
         onOpenChange={setShowNewCaseModal}
         onCaseCreated={handleCaseCreated}
       />
+
+      {/* Edit Cases Modal */}
+      {showEditCasesModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background border border-border rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <h2 className="text-xl font-semibold">Edit Cases</h2>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => {
+                  setEditingCases([]);
+                  setShowEditCasesModal(false);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-6 max-h-[calc(90vh-140px)] overflow-y-auto">
+              <div className="space-y-6">
+                {editingCases.map((case_, index) => (
+                  <EditCaseForm 
+                    key={case_.id}
+                    case={case_}
+                    onUpdate={(updatedCase) => {
+                      const newCases = [...editingCases];
+                      newCases[index] = updatedCase;
+                      setEditingCases(newCases);
+                    }}
+                    onDelete={() => {
+                      const newCases = editingCases.filter((_, i) => i !== index);
+                      setEditingCases(newCases);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-border">
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  setEditingCases([]);
+                  setShowEditCasesModal(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="legal"
+                onClick={handleSaveCases}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
