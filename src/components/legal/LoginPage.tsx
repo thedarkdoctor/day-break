@@ -108,10 +108,10 @@ export const LoginPage = ({ onAuthSuccess }: LoginPageProps) => {
       if (data.user) {
         toast({
           title: "Account Created!",
-          description: "Please check your email to verify your account.",
+          description: "Please check your email and click the verification link to complete your registration. Then return here to sign in.",
         });
-        // For development, automatically sign in after signup
-        onAuthSuccess?.();
+        // Clear the form
+        setSignUpData({ email: "", password: "", confirmPassword: "" });
       }
     } catch (error) {
       toast({
