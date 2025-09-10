@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { NewCaseModal } from "./NewCaseModal";
+import { ManageTeamsModal } from "./ManageTeamsModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -612,6 +613,7 @@ export const Dashboard = () => {
               <User className="h-4 w-4" />
               Profile
             </Button>
+            <ManageTeamsModal />
             <Button variant="legal" size="sm" onClick={() => {
               console.log('New Case button clicked');
               setShowNewCaseModal(true);
