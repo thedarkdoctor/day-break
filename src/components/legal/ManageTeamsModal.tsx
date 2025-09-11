@@ -448,10 +448,10 @@ export function ManageTeamsModal() {
                   <Card className="border-green-200 bg-green-50">
                     <CardContent className="pt-6">
                       <div className="text-center space-y-2">
-                        <p className="text-sm text-green-800">Team created successfully!</p>
+                        <p className="text-sm text-black font-medium">Team created successfully!</p>
                         <div className="flex items-center justify-center gap-2">
-                          <Label>Share this code:</Label>
-                          <code className="px-3 py-1 bg-green-100 rounded text-lg font-mono">
+                          <Label className="text-black">Share this code:</Label>
+                          <code className="px-3 py-1 bg-green-100 rounded text-lg font-mono text-black font-bold">
                             {createdTeamCode}
                           </code>
                           <Button
