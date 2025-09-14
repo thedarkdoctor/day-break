@@ -397,6 +397,61 @@ export const Dashboard = () => {
     }
   };
 
+  const exportToCSV = async () => {
+    if (!user) return;
+    
+    try {
+      // Fetch ALL time entries for export (no limit)
+      const { data, error } = await supabase
+        .from('time_entries')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        toast.error("No time entries to export");
+        return;
+      }
+
+      // Create CSV headers
+      const headers = ['Date', 'Client Name', 'Task Description', 'Hours', 'Hourly Rate', 'Total Amount'];
+      
+      // Create CSV rows
+      const csvRows = data.map(entry => [
+        new Date(entry.date).toLocaleDateString(),
+        entry.client_name,
+        entry.task_description.replace(/"/g, '""'), // Escape quotes in task description
+        entry.hours.toString(),
+        entry.hourly_rate.toString(),
+        entry.total_amount.toString()
+      ]);
+
+      // Combine headers and rows
+      const csvContent = [
+        headers.join(','),
+        ...csvRows.map(row => row.map(field => `"${field}"`).join(','))
+      ].join('\n');
+
+      // Create and download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `billing_tracker_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success("Billing data exported successfully");
+    } catch (error) {
+      console.error('Error exporting to CSV:', error);
+      toast.error("Failed to export billing data");
+    }
+  };
+
   // Handle editing time entries
   const handleEditTimeEntries = () => {
     setEditingTimeEntries([...timeEntries]);
@@ -900,7 +955,7 @@ export const Dashboard = () => {
                   <span className="text-sm font-medium">Total Amount:</span>
                   <span className="font-bold text-legal-purple">${totalBillableAmount.toLocaleString()}</span>
                 </div>
-                <Button variant="legal-outline" className="w-full">
+                <Button variant="legal-outline" className="w-full" onClick={exportToCSV}>
                   Export to CSV
                 </Button>
               </div>
