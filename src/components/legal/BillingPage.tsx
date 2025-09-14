@@ -2,7 +2,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Scale, Star, Zap, Crown } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { CheckCircle, Scale, Star, Zap, Crown, Users } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { toast } from "@/hooks/use-toast";
 
 const FEATURES = {
   basic: [
@@ -32,9 +37,16 @@ const FEATURES = {
   ]
 };
 
-export const BillingPage = () => {
+interface BillingPageProps {
+  onTeamJoin?: () => void;
+}
+
+export const BillingPage = ({ onTeamJoin }: BillingPageProps) => {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [teamCode, setTeamCode] = useState("");
+  const [isJoiningTeam, setIsJoiningTeam] = useState(false);
+  const { user } = useAuth();
 
   const handleSubscribe = async (planType: string) => {
     setSelectedPlan(planType);
@@ -47,6 +59,76 @@ export const BillingPage = () => {
       setIsProcessing(false);
       setSelectedPlan(null);
     }, 2000);
+  };
+
+  const handleJoinTeam = async () => {
+    if (!teamCode.trim() || !user) return;
+    
+    setIsJoiningTeam(true);
+    
+    try {
+      // First, check if the team exists with this code
+      const { data: team, error: teamError } = await supabase
+        .from('teams')
+        .select('id, name')
+        .eq('team_code', teamCode.trim())
+        .single();
+
+      if (teamError || !team) {
+        toast({
+          title: "Invalid Code",
+          description: "Team code not found. Please check the code and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if user is already a member
+      const { data: existingMember } = await supabase
+        .from('team_members')
+        .select('id')
+        .eq('team_id', team.id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (existingMember) {
+        toast({
+          title: "Already a Member",
+          description: `You're already a member of ${team.name}.`,
+        });
+        onTeamJoin?.();
+        return;
+      }
+
+      // Add user to the team
+      const { error: memberError } = await supabase
+        .from('team_members')
+        .insert({
+          team_id: team.id,
+          user_id: user.id,
+          role: 'member'
+        });
+
+      if (memberError) {
+        throw memberError;
+      }
+
+      toast({
+        title: "Successfully Joined Team",
+        description: `Welcome to ${team.name}! You can now access the team dashboard.`,
+      });
+
+      onTeamJoin?.();
+    } catch (error) {
+      console.error('Error joining team:', error);
+      toast({
+        title: "Error",
+        description: "Failed to join team. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsJoiningTeam(false);
+    }
   };
 
   return (
@@ -176,6 +258,41 @@ export const BillingPage = () => {
                 disabled={isProcessing}
               >
                 {selectedPlan === "enterprise" && isProcessing ? "Processing..." : "Contact Sales"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Team Join Section */}
+        <div className="mb-12">
+          <Card className="max-w-md mx-auto bg-card shadow-card">
+            <CardHeader className="text-center">
+              <div className="flex justify-center mb-2">
+                <Users className="h-8 w-8 text-legal-purple" />
+              </div>
+              <CardTitle className="text-xl">Part of a Team?</CardTitle>
+              <CardDescription>
+                Enter your team code to join and bypass billing
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="team-code">Team Code</Label>
+                <Input
+                  id="team-code"
+                  placeholder="Enter team code here..."
+                  value={teamCode}
+                  onChange={(e) => setTeamCode(e.target.value)}
+                  disabled={isJoiningTeam}
+                />
+              </div>
+              <Button
+                variant="legal"
+                className="w-full"
+                onClick={handleJoinTeam}
+                disabled={!teamCode.trim() || isJoiningTeam}
+              >
+                {isJoiningTeam ? "Joining Team..." : "Join Team"}
               </Button>
             </CardContent>
           </Card>

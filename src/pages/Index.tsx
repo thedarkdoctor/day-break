@@ -67,7 +67,7 @@ const AuthenticatedApp = () => {
       case "onboarding":
         return <OnboardingFlow onComplete={() => setCurrentView("dashboard")} />;
       case "billing":
-        return <BillingPage />;
+        return <BillingPage onTeamJoin={() => setCurrentView("dashboard")} />;
       case "dashboard":
         return <Dashboard />;
       default:
