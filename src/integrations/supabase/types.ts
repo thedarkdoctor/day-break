@@ -56,6 +56,42 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_reviews: {
+        Row: {
+          analysis_results: Json
+          compliance_flags: string[] | null
+          created_at: string
+          document_name: string
+          id: string
+          risk_level: string
+          risk_score: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          analysis_results: Json
+          compliance_flags?: string[] | null
+          created_at?: string
+          document_name: string
+          id?: string
+          risk_level: string
+          risk_score: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          analysis_results?: Json
+          compliance_flags?: string[] | null
+          created_at?: string
+          document_name?: string
+          id?: string
+          risk_level?: string
+          risk_score?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           about_yourself: string | null
