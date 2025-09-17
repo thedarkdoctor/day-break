@@ -16,6 +16,8 @@ import { toast } from "sonner";
 interface ContractReviewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialAnalysis?: ContractAnalysis | null;
+  initialExecutiveSummary?: string;
 }
 
 interface ClauseAnalysis {
@@ -48,13 +50,13 @@ interface ContractAnalysis {
   compliance_flags: string[];
 }
 
-export function ContractReviewModal({ open, onOpenChange }: ContractReviewModalProps) {
+export function ContractReviewModal({ open, onOpenChange, initialAnalysis, initialExecutiveSummary }: ContractReviewModalProps) {
   const { user } = useAuth();
   const [contractText, setContractText] = useState("");
   const [documentName, setDocumentName] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysis, setAnalysis] = useState<ContractAnalysis | null>(null);
-  const [executiveSummary, setExecutiveSummary] = useState("");
+  const [analysis, setAnalysis] = useState<ContractAnalysis | null>(initialAnalysis || null);
+  const [executiveSummary, setExecutiveSummary] = useState(initialExecutiveSummary || "");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -179,8 +181,8 @@ export function ContractReviewModal({ open, onOpenChange }: ContractReviewModalP
   const resetForm = () => {
     setContractText("");
     setDocumentName("");
-    setAnalysis(null);
-    setExecutiveSummary("");
+    setAnalysis(initialAnalysis || null);
+    setExecutiveSummary(initialExecutiveSummary || "");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -290,6 +290,9 @@ export const Dashboard = () => {
   const [teams, setTeams] = useState<any[]>([]);
   const [ownedTeams, setOwnedTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [contractAnalysis, setContractAnalysis] = useState<any>(null);
+  const [executiveSummary, setExecutiveSummary] = useState("");
 
   // Fetch user profile and teams
   const fetchProfile = async () => {
@@ -452,6 +455,94 @@ export const Dashboard = () => {
     } catch (error) {
       console.error('Error exporting to CSV:', error);
       toast.error("Failed to export billing data");
+    }
+  };
+
+  const handleContractFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setTimeEntryLoading(true);
+      let extractedText = "";
+      let documentName = file.name;
+
+      if (file.type === 'text/plain') {
+        // Handle plain text files
+        const text = await file.text();
+        extractedText = text;
+        
+        if (!extractedText.trim()) {
+          throw new Error('No text found in the file');
+        }
+
+        await processContractText(extractedText, documentName);
+      } else if (file.type === 'application/pdf' || 
+                 file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+                 file.type === 'application/msword') {
+        
+        // For PDF and DOCX files, open the modal for manual text input
+        toast.info("For PDF and DOCX files, please copy and paste the contract text manually in the modal");
+        setShowContractReviewModal(true);
+        
+      } else {
+        throw new Error('Please upload a TXT, PDF, DOCX, or DOC file');
+      }
+
+    } catch (error) {
+      console.error('File processing error:', error);
+      toast.error(error instanceof Error ? error.message : "Failed to process file");
+    } finally {
+      setTimeEntryLoading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const processContractText = async (contractText: string, documentName: string) => {
+    try {
+      if (!user) {
+        toast.error("Please log in to analyze contracts");
+        return;
+      }
+
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      if (!sessionData?.session?.access_token) {
+        throw new Error("No valid session token");
+      }
+
+      toast.success("Analyzing contract with AI...");
+
+      const analysisResponse = await supabase.functions.invoke('ai-contract-review', {
+        body: {
+          contract_text: contractText,
+          document_name: documentName
+        },
+        headers: {
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        }
+      });
+
+      if (analysisResponse.error) {
+        throw new Error(analysisResponse.error.message || 'Analysis failed');
+      }
+
+      if (analysisResponse.data?.analysis && analysisResponse.data?.executive_summary) {
+        // Open the modal with the analysis results
+        setContractAnalysis(analysisResponse.data.analysis);
+        setExecutiveSummary(analysisResponse.data.executive_summary);
+        setShowContractReviewModal(true);
+        toast.success("Contract analysis completed!");
+      } else {
+        throw new Error('Invalid response format');
+      }
+
+    } catch (error) {
+      console.error('Contract analysis error:', error);
+      toast.error(error instanceof Error ? error.message : "Failed to analyze contract");
     }
   };
 
@@ -753,13 +844,34 @@ export const Dashboard = () => {
                 <p className="text-sm text-muted-foreground mb-4">
                   Upload contracts for AI-powered risk analysis and compliance checking
                 </p>
-                <Button 
-                  variant="legal-outline"
-                  onClick={() => setShowContractReviewModal(true)}
-                >
-                  <Shield className="h-4 w-4 mr-2" />
-                  Start Contract Review
-                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.docx,.doc,.txt"
+                  onChange={handleContractFileUpload}
+                  className="hidden"
+                />
+                <div className="space-y-2">
+                  <Button 
+                    variant="legal-outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={timeEntryLoading}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {timeEntryLoading ? "Processing..." : "Choose Contract File"}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    TXT files will be processed automatically. For PDF/DOCX, copy text manually.
+                  </p>
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowContractReviewModal(true)}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Paste Contract Text
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1268,7 +1380,9 @@ export const Dashboard = () => {
 
       <ContractReviewModal 
         open={showContractReviewModal} 
-        onOpenChange={setShowContractReviewModal} 
+        onOpenChange={setShowContractReviewModal}
+        initialAnalysis={contractAnalysis}
+        initialExecutiveSummary={executiveSummary}
       />
     </div>
   );
