@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { NewCaseModal } from "./NewCaseModal";
 import { ManageTeamsModal } from "./ManageTeamsModal";
+import { ContractReviewModal } from "./ContractReviewModal";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -29,7 +30,8 @@ import {
   Settings,
   LogOut,
   Crown,
-  UserPlus
+  UserPlus,
+  Shield
 } from "lucide-react";
 
 interface Case {
@@ -279,6 +281,7 @@ export const Dashboard = () => {
   const [showEditCasesModal, setShowEditCasesModal] = useState(false);
   const [showEditTimeEntriesModal, setShowEditTimeEntriesModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showContractReviewModal, setShowContractReviewModal] = useState(false);
   const [cases, setCases] = useState<Case[]>([]);
   const [editingCases, setEditingCases] = useState<Case[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
@@ -737,7 +740,7 @@ export const Dashboard = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Upload className="h-5 w-5 mr-2 text-legal-purple" />
+                <Shield className="h-5 w-5 mr-2 text-legal-purple" />
                 AI Contract Review
               </CardTitle>
               <CardDescription>
@@ -746,12 +749,16 @@ export const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-                <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-sm text-muted-foreground mb-4">
-                  Drag and drop PDF or DOCX files here, or click to browse
+                  Upload contracts for AI-powered risk analysis and compliance checking
                 </p>
-                <Button variant="legal-outline">
-                  Choose Files
+                <Button 
+                  variant="legal-outline"
+                  onClick={() => setShowContractReviewModal(true)}
+                >
+                  <Shield className="h-4 w-4 mr-2" />
+                  Start Contract Review
                 </Button>
               </div>
             </CardContent>
@@ -1250,6 +1257,19 @@ export const Dashboard = () => {
           </div>
         </div>
       )}
+
+      {/* Modals */}
+      <NewCaseModal 
+        open={showNewCaseModal} 
+        onOpenChange={setShowNewCaseModal} 
+        onCaseCreated={fetchCases} 
+      />
+      
+
+      <ContractReviewModal 
+        open={showContractReviewModal} 
+        onOpenChange={setShowContractReviewModal} 
+      />
     </div>
   );
 };
