@@ -259,10 +259,11 @@ export function ContractReviewModal({ open, onOpenChange, initialAnalysis, initi
           </DialogTitle>
         </DialogHeader>
         
-        <div className="flex flex-col space-y-6 flex-1 overflow-hidden">
+        <div className="flex flex-col space-y-6 flex-1 min-h-0">
           {!analysis ? (
             // Input Form
-            <div className="space-y-4">
+            <ScrollArea className="flex-1">
+              <div className="space-y-4 pr-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="document-name">Document Name</Label>
@@ -383,11 +384,11 @@ export function ContractReviewModal({ open, onOpenChange, initialAnalysis, initi
                   {isAnalyzing ? "Analyzing..." : "Analyze Contract"}
                 </Button>
               </div>
-            </div>
+              </div>
+            </ScrollArea>
           ) : (
             // Analysis Results
-            <ScrollArea className="flex-1">
-              <div className="space-y-6 pr-4">
+            <div className="flex-1 min-h-0 flex flex-col">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                   <h3 className="text-lg font-semibold">Analysis Results</h3>
                   <div className="flex gap-2">
@@ -404,14 +405,16 @@ export function ContractReviewModal({ open, onOpenChange, initialAnalysis, initi
                 </div>
 
                 {/* Compliance Analysis Tabs */}
-                <Tabs defaultValue="overview" className="w-full">
+                <Tabs defaultValue="overview" className="w-full flex-1 min-h-0 flex flex-col">
                   <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="overview">Overview</TabsTrigger>
                     <TabsTrigger value="compliance">Compliance</TabsTrigger>
                     <TabsTrigger value="detailed">Detailed Analysis</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="overview" className="space-y-6">
+                  <TabsContent value="overview" className="flex-1 min-h-0">
+                    <ScrollArea className="h-full">
+                      <div className="space-y-6 pr-4">
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
                   <Card className={`${getRiskColor(analysis.overall_risk_level)} border`}>
@@ -575,9 +578,13 @@ export function ContractReviewModal({ open, onOpenChange, initialAnalysis, initi
                     </div>
                   </CardContent>
                 </Card>
+                      </div>
+                    </ScrollArea>
                   </TabsContent>
 
-                  <TabsContent value="compliance" className="space-y-6">
+                  <TabsContent value="compliance" className="flex-1 min-h-0">
+                    <ScrollArea className="h-full">
+                      <div className="space-y-6 pr-4">
                     {complianceAnalysis ? (
                       <>
                         {/* Compliance Overview */}
@@ -706,9 +713,13 @@ export function ContractReviewModal({ open, onOpenChange, initialAnalysis, initi
                         No compliance analysis available. Run the analysis to see compliance results.
                       </div>
                     )}
+                      </div>
+                    </ScrollArea>
                   </TabsContent>
 
-                  <TabsContent value="detailed" className="space-y-6">
+                  <TabsContent value="detailed" className="flex-1 min-h-0">
+                    <ScrollArea className="h-full">
+                      <div className="space-y-6 pr-4">
                     {/* Original detailed analysis content */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       {/* Executive Summary */}
@@ -799,10 +810,11 @@ export function ContractReviewModal({ open, onOpenChange, initialAnalysis, initi
                         </CardContent>
                       </Card>
                     </div>
+                      </div>
+                    </ScrollArea>
                   </TabsContent>
                 </Tabs>
-              </div>
-            </ScrollArea>
+            </div>
           )}
         </div>
       </DialogContent>
