@@ -357,9 +357,20 @@ export function ClauseLibraryManager({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="">All Categories</SelectItem>
-                          {Object.values(ClauseCategory).map((category) => (
+                          {([
+                            'DATA_PROTECTION',
+                            'FINANCIAL_REPORTING',
+                            'HEALTHCARE_PRIVACY',
+                            'CONSUMER_RIGHTS',
+                            'SECURITY_REQUIREMENTS',
+                            'AUDIT_COMPLIANCE',
+                            'TERMINATION_RIGHTS',
+                            'LIABILITY_LIMITATION',
+                            'INTELLECTUAL_PROPERTY',
+                            'CONFIDENTIALITY'
+                          ] as const).map((category) => (
                             <SelectItem key={category} value={category}>
-                              {category.replace('_', ' ')}
+                              {category.replace(/_/g, ' ')}
                             </SelectItem>
                           ))}
                         </SelectContent>

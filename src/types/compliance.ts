@@ -1,3 +1,5 @@
+import type { ClauseCategory } from './clause-library';
+
 export type ComplianceFramework = 
   | 'GDPR' 
   | 'HIPAA' 
@@ -11,23 +13,6 @@ export type ComplianceFramework =
   | 'CUSTOM';
 
 export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-
-export type ClauseCategory = 
-  | 'DATA_PROTECTION'
-  | 'FINANCIAL_REPORTING'
-  | 'HEALTHCARE_PRIVACY'
-  | 'CONSUMER_RIGHTS'
-  | 'SECURITY_REQUIREMENTS'
-  | 'AUDIT_COMPLIANCE'
-  | 'TERMINATION_RIGHTS'
-  | 'LIABILITY_LIMITATION'
-  | 'INTELLECTUAL_PROPERTY'
-  | 'CONFIDENTIALITY'
-  | 'DATA_RETENTION'
-  | 'CROSS_BORDER_TRANSFER'
-  | 'CONSENT_MANAGEMENT'
-  | 'BREACH_NOTIFICATION'
-  | 'THIRD_PARTY_SHARING';
 
 export interface ComplianceRule {
   id: string;
