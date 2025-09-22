@@ -4,9 +4,9 @@ import {
   ComplianceScore, 
   ContractComplianceAnalysis,
   ComplianceFramework,
-  RiskLevel,
-  ClauseCategory
+  RiskLevel
 } from '@/types/compliance';
+import { ClauseCategory } from '@/types/clause-library';
 import { ALL_COMPLIANCE_RULES, RISK_LEVEL_WEIGHTS, FRAMEWORK_WEIGHTS } from './compliance-frameworks';
 
 export class ComplianceAnalyzer {

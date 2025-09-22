@@ -24,7 +24,7 @@ import {
 import { AnalyticsDashboard } from './AnalyticsDashboard';
 import { ProfitabilityTracker } from './ProfitabilityTracker';
 import { TimeTrackingAnalytics } from './TimeTrackingAnalytics';
-import { RiskAnalytics } from './RiskAnalytics';
+import RiskAnalytics from './RiskAnalytics';
 
 export function AnalyticsDemo() {
   const [selectedTab, setSelectedTab] = useState('overview');
@@ -186,7 +186,7 @@ export function AnalyticsDemo() {
                 <p className="text-sm font-medium text-muted-foreground">Risk Score</p>
                 <p className="text-2xl font-bold text-green-600">24.3</p>
                 <div className="flex items-center gap-1 mt-1">
-                  <TrendingDown className="h-4 w-4 text-green-600" />
+                  <TrendingUp className="h-4 w-4 text-green-600" />
                   <span className="text-sm text-green-600">-8.1%</span>
                 </div>
               </div>

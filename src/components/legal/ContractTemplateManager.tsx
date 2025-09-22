@@ -86,7 +86,7 @@ export function ContractTemplateManager({
       filtered = filtered.filter(template =>
         template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        template.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+        template.metadata.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
 
@@ -367,14 +367,14 @@ export function ContractTemplateManager({
 
                 {/* Tags */}
                 <div className="flex flex-wrap gap-1">
-                  {template.tags.slice(0, 3).map((tag, index) => (
+                  {template.metadata.tags.slice(0, 3).map((tag, index) => (
                     <Badge key={index} variant="outline" className="text-xs">
                       {tag}
                     </Badge>
                   ))}
-                  {template.tags.length > 3 && (
+                  {template.metadata.tags.length > 3 && (
                     <Badge variant="outline" className="text-xs">
-                      +{template.tags.length - 3}
+                      +{template.metadata.tags.length - 3}
                     </Badge>
                   )}
                 </div>

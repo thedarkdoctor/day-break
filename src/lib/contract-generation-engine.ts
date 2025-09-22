@@ -235,7 +235,7 @@ export class ContractGenerationEngine {
 
     if (tags && tags.length > 0) {
       templates = templates.filter(t => 
-        tags.some(tag => t.tags.includes(tag))
+        tags.some(tag => t.metadata.tags.includes(tag))
       );
     }
 
@@ -564,7 +564,6 @@ export class ContractGenerationEngine {
 
   private getFieldMapping(fieldName: string): string | null {
     const mappings: Record<string, string> = {
-      'client_name': 'clientName',
       'client_name': 'clientName',
       'contact_person': 'contactPerson',
       'contact_email': 'email',

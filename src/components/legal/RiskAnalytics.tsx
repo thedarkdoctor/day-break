@@ -547,3 +547,5 @@ export function RiskAnalyticsComponent({
     </div>
   );
 }
+
+export default RiskAnalyticsComponent;

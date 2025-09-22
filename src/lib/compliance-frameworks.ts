@@ -1,4 +1,5 @@
-import { ComplianceRule, ComplianceFramework, ClauseCategory, RiskLevel } from '@/types/compliance';
+import { ComplianceRule, ComplianceFramework, RiskLevel } from '@/types/compliance';
+import { ClauseCategory } from '@/types/clause-library';
 
 // GDPR Compliance Rules
 export const GDPR_RULES: ComplianceRule[] = [

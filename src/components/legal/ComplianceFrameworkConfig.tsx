@@ -33,10 +33,10 @@ import {
 import { 
   ComplianceRule, 
   ComplianceFramework, 
-  RiskLevel, 
-  ClauseCategory,
+  RiskLevel,
   ComplianceConfiguration 
 } from '@/types/compliance';
+import { ClauseCategory } from '@/types/clause-library';
 import { ComplianceAnalyzer } from '@/lib/compliance-analyzer';
 
 interface ComplianceFrameworkConfigProps {

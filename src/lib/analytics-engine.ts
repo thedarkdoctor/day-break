@@ -621,6 +621,7 @@ export class AnalyticsEngine {
         category: 'PROFITABILITY',
         actionable: true,
         actionText: 'Review Client Pricing',
+        acknowledged: false,
         createdAt: new Date()
       });
     }
@@ -636,6 +637,7 @@ export class AnalyticsEngine {
         category: 'RISK',
         actionable: true,
         actionText: 'Review Risk Mitigation',
+        acknowledged: false,
         createdAt: new Date()
       });
     }
@@ -651,6 +653,7 @@ export class AnalyticsEngine {
         category: 'TIME_TRACKING',
         actionable: true,
         actionText: 'Review Time Tracking',
+        acknowledged: false,
         createdAt: new Date()
       });
     }
